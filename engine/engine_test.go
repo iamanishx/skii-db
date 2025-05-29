@@ -1,11 +1,12 @@
 package engine_test
 
-import ( "testing"
+import (
 	"skii-db/engine"
+	"testing"
 )
 
 func Test_SetGetKeyValue(t *testing.T) {
-    e := engine.NewEngine()
+    e, _ := engine.NewEngine()
     e.Set("foo", "bar")
     value, err := e.Get("foo")
     if err != nil {

@@ -1,7 +1,6 @@
 package engine
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -46,13 +45,43 @@ func (e *Engine) Set(key, value string) error {
 	}
 
 	e.data[key] = offset
+	fmt.Println("Key set:", key, "at offset", offset)
 	return nil
 }
 
 func (e *Engine) Get(key string) (string, error) {
-	value, ok := e.data[key]
-	if !ok {
-		return "", errors.New("key not found")
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	if _, ok := e.data[key]; !ok {
+		return "", fmt.Errorf("key not found")
 	}
-	return value, nil
+
+	_, err := e.file.Seek(e.data[key]+int64(len(key))+1, 0)
+	if err != nil {
+		fmt.Println("Error seeking file:", err)
+		return "", err
+	}
+
+	buffer := make([]byte, 1)
+	var content []byte
+
+	for {
+		n, err := e.file.Read(buffer)
+		if err != nil {
+			fmt.Println("Error reading file:", err)
+			break
+		}
+
+		if n == 0 {
+			break
+		}
+
+		if buffer[0] == '\n' {
+			break
+		}
+
+		content = append(content, buffer[0])
+	}
+	return string(content), nil
 }
