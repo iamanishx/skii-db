@@ -1,10 +1,13 @@
 package engine
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
+	"strings"
 	"sync"
+	"time"
 )
 
 type Engine struct {
@@ -84,4 +87,67 @@ func (e *Engine) Get(key string) (string, error) {
 		content = append(content, buffer[0])
 	}
 	return string(content), nil
+}
+
+const Seconds = 5
+
+func (e *Engine) CompactFile() {
+	for {
+		time.Sleep(time.Duration(Seconds) * time.Second)
+		fmt.Println("Compacting file...")
+		e.mu.Lock()
+
+		_, m := e.GetMapFromFile()
+
+		var err error
+		err = e.file.Truncate(0)
+		if err != nil {
+			fmt.Println(err)
+			e.mu.Unlock()
+			continue
+		}
+
+		for k, v := range m {
+			e.setRaw(k, v)
+		}
+
+		e.file.Seek(0, 0)
+		e.mu.Unlock()
+	}
+}
+
+type Item struct {
+	Key    string
+	Value  string
+	Offset int64
+}
+
+func (c *Engine) GetMapFromFile() ([]Item, map[string]string) {
+	m := make(map[string]string)
+	i := []Item{}
+
+	_, err := c.file.Seek(0, 0)
+	if err != nil {
+		fmt.Println(err)
+		return i, m
+	}
+
+	var totalBytesRead int64
+	scanner := bufio.NewScanner(c.file)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		offset := totalBytesRead
+		parts := strings.Split(line, keyValueSeparator)
+		if len(parts) >= 2 {
+			m[parts[0]] = parts[1]
+			i = append(i, Item{
+				Key:    parts[0],
+				Value:  parts[1],
+				Offset: offset,
+			})
+		}
+	}
+
+	return i, m
 }
