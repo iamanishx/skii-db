@@ -16,6 +16,10 @@ type Engine struct {
 	mu   sync.Mutex
 }
 
+func (e *Engine) Lock() {
+	panic("unimplemented")
+}
+
 var keyValueSeparator = " "
 
 func NewEngine() (*Engine, error) {
@@ -35,21 +39,11 @@ func (e *Engine) Set(key, value string) error {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 
-	offset, err := e.file.Seek(0, io.SeekEnd)
-	if err != nil {
-		fmt.Println("Error seeking file:", err)
-		return err
+	if strings.Contains(key, " ") {
+		return fmt.Errorf("key cannot contain spaces")
 	}
 
-	_, err = e.file.WriteString(key + keyValueSeparator + value + "\n")
-	if err != nil {
-		fmt.Println("Error appending text:", err)
-		return err
-	}
-
-	e.data[key] = offset
-	fmt.Println("Key set:", key, "at offset", offset)
-	return nil
+	return e.setRaw(key, value)
 }
 
 func (e *Engine) Get(key string) (string, error) {
@@ -99,8 +93,7 @@ func (e *Engine) CompactFile() {
 
 		_, m := e.GetMapFromFile()
 
-		var err error
-		err = e.file.Truncate(0)
+		err := e.file.Truncate(0)
 		if err != nil {
 			fmt.Println(err)
 			e.mu.Unlock()
@@ -150,4 +143,34 @@ func (c *Engine) GetMapFromFile() ([]Item, map[string]string) {
 	}
 
 	return i, m
+}
+
+func (e *Engine) setRaw(key string, value string) error {
+	offset, err := e.saveToFile(key, value)
+	if err != nil {
+		return err
+	}
+
+	e.setKey(key, offset)
+	return nil
+}
+
+func (e *Engine) setKey(key string, value int64) {
+	e.data[key] = value
+}
+
+func (c *Engine) saveToFile(key string, value string) (int64, error) {
+	offset, err := c.file.Seek(0, io.SeekEnd)
+	if err != nil {
+		fmt.Println("Error seeking file:", err)
+		return 0, err
+	}
+
+	_, err = c.file.WriteString(key + keyValueSeparator + value + "\n")
+	if err != nil {
+		fmt.Println("Error appending text:", err)
+		return 0, err
+	}
+
+	return offset, nil
 }
