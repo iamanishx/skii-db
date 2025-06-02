@@ -1,0 +1,18 @@
+version: '3.8'
+
+services:
+  skii-db:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - data-volume:/app/data
+    environment:
+      - DATA_PATH=/app/data/data.txt
+    ports:
+      - "50051:50051"  # Reserved for future protocol implementation
+    restart: unless-stopped
+
+volumes:
+  data-volume:
+    driver: local
