@@ -174,3 +174,18 @@ func (c *Engine) saveToFile(key string, value string) (int64, error) {
 
 	return offset, nil
 }
+
+func (e *Engine) Restore(){
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	Items,_ := e.GetMapFromFile()
+
+     for _, v := range Items{
+		e.setKey(v.Key, v.Offset)
+	 }
+}
+
+func (c *Engine) Close(){
+	c.file.Close()
+}
