@@ -17,6 +17,7 @@ type Engine struct {
 	fileDelete *os.File
 	mu         sync.Mutex
 	muDlete    sync.Mutex
+	fileMu     sync.Mutex
 }
 
 func (e *Engine) Lock() {
@@ -26,12 +27,12 @@ func (e *Engine) Lock() {
 var keyValueSeparator = " "
 
 func NewEngine() (*Engine, error) {
-	file, err := os.OpenFile("data.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	file, err := os.OpenFile("data.txt", os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		fmt.Println("Error opening file data:", err)
 		return nil, err
 	}
-	fileDelete, err := os.OpenFile("delete.txt", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	fileDelete, err := os.OpenFile("delete.txt", os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
 		fmt.Println("Error opening file delete:", err)
 		return nil, err
@@ -43,6 +44,7 @@ func NewEngine() (*Engine, error) {
 		fileDelete: fileDelete,
 		mu:         sync.Mutex{},
 		muDlete:    sync.Mutex{},
+		fileMu:     sync.Mutex{},
 	}, nil
 }
 
@@ -101,13 +103,15 @@ func (e *Engine) CompactFile() {
 		time.Sleep(time.Duration(Seconds) * time.Second)
 		fmt.Println("Compacting file...")
 		e.mu.Lock()
-
 		_, m := e.GetMapFromFile()
+		e.mu.Unlock()
+
+		e.fileMu.Lock()
 
 		err := e.file.Truncate(0)
 		if err != nil {
 			fmt.Println(err)
-			e.mu.Unlock()
+			e.fileMu.Unlock()
 			continue
 		}
 
@@ -116,7 +120,8 @@ func (e *Engine) CompactFile() {
 		}
 
 		e.file.Seek(0, 0)
-		e.mu.Unlock()
+		e.fileMu.Unlock()
+
 	}
 }
 
@@ -271,6 +276,9 @@ func (c *Engine) deleteKeyFromFile(keys []string) error {
 
 	c.mu.Lock()
 	defer c.mu.Unlock()
+	c.fileMu.Lock() 
+    defer c.fileMu.Unlock()
+    
 
 	_, err := c.file.Seek(0, 0)
 	if err != nil {
