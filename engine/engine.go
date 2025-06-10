@@ -20,6 +20,12 @@ type Engine struct {
 	fileMu     sync.Mutex
 }
 
+type Item struct {
+	Key    string
+	Value  string
+	Offset int64
+}
+
 func (e *Engine) Lock() {
 	panic("unimplemented")
 }
@@ -125,11 +131,7 @@ func (e *Engine) CompactFile() {
 	}
 }
 
-type Item struct {
-	Key    string
-	Value  string
-	Offset int64
-}
+
 
 func (c *Engine) GetMapFromFile() ([]Item, map[string]string) {
 	m := make(map[string]string)
