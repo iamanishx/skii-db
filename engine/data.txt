@@ -1,4 +1,0 @@
-key1_restore value1
-key2_restore value2
-key1_delete value1
-key2_delete value2
